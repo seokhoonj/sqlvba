@@ -1,40 +1,85 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} UserForm1 
-   Caption         =   "INSERT strSQL"
-   ClientHeight    =   9583
-   ClientLeft      =   42
-   ClientTop       =   378
-   ClientWidth     =   10563
+   Caption         =   "INSERT strSQL (Created by Seokhoon Joo)"
+   ClientHeight    =   9585
+   ClientLeft      =   45
+   ClientTop       =   375
+   ClientWidth     =   10425
    OleObjectBlob   =   "UserForm1.frx":0000
-   StartUpPosition =   1  '소유자 가운데
+   StartUpPosition =   1  'CenterOwner
 End
 Attribute VB_Name = "UserForm1"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+'==============================
+' 2013 Created by Seokhoon Joo (seokhoonj.github.io)
+' SQL with Excel
+'==============================
+
 Option Explicit
 
-Private Sub cmbDB_Change()
+Private Sub UserForm_Initialize()
 
     Dim i As Long
-    Dim lastrow_tbl As Long
+    Dim lastrow_strSQL As Long
+    Dim lastrow_DBList As Long
+    Dim strConn As String
     Dim adoConn As ADODB.Connection
     Dim adoRS As ADODB.Recordset
+    Dim WBname As String
+    Dim collection As New collection
     
-    lastrow_tbl = Sheets("List").Cells(rows.Count, 2).End(3).row
+        lastrow_strSQL = Sheets("strSQL").Cells(Rows.Count, 2).End(3).Row
+        lastrow_DBList = Sheets("List").Cells(Rows.Count, 2).End(3).Row
+
     
-    With Sheets("List")
-        .Range(.Cells(2, 2), .Cells(lastrow_tbl, 2)).ClearContents
+    For i = 2 To lastrow_strSQL
+        With Sheets("strSQL")
+            listboxstrSQLCollection.AddItem .Cells(i, 2)
+        End With
+    Next i
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+        With Sheets("List")
+                    For i = 2 To lastrow_DBList
+                            cmbDB.AddItem .Cells(i, 2)
+                    Next i
+        End With
+        
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+   
+   
+If Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "xls" Or _
+   Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "xlsx" Or _
+   Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "xlsm" Or _
+   Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "xlsb" Then
+        
+        WBname = Cells(8, 1)
+        Set collection = GetSheetsNames(WBname)
+
+        For i = 1 To collection.Count
+           Sheets("List").Cells(i + 1, 3) = collection(i)
+        Next i
+        
+    With Sheets("Query")
+        cmbDB = .Cells(8, 1)
+        cmbTable = .Cells(11, 1)
+        txtstrSQL = .Cells(1, 1)
     End With
-    
-    
-       Set adoConn = New ADODB.Connection
+        
+ElseIf Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "accdb" Or _
+         Mid(Cells(8, 1), InStrRev(Cells(8, 1), ".") + 1, Len(Cells(8, 1)) - InStrRev(Cells(8, 1), ".")) = "mdb" Then
+                     
+   Set adoConn = New ADODB.Connection
 
    ' Open the connection.
    With adoConn
       .Provider = "Microsoft.ACE.OLEDB.12.0"
-      .Open "C:\myDB\" & cmbDB & ".accdb"
+      .Open Cells(8, 1)
    End With
 
    ' Open the tables schema rowset.
@@ -46,9 +91,94 @@ Private Sub cmbDB_Change()
    i = 2
    With adoRS
       Do While Not .EOF
-      lastrow_tbl = Sheets("List").Cells(rows.Count, 2).End(3).row
          If .Fields("TABLE_TYPE") <> "VIEW" And Left(.Fields("TABLE_NAME"), 4) <> "MSys" Then
-               Sheets("List").Cells(lastrow_tbl + 1, 2) = .Fields("TABLE_NAME") '& vbTab & .Fields("TABLE_TYPE")
+               Sheets("List").Cells(i, 3) = .Fields("TABLE_NAME") '& vbTab & .Fields("TABLE_TYPE")
+         End If
+         .MoveNext
+         i = i + 1
+      Loop
+   End With
+   adoRS.Close
+   adoConn.Close
+   
+   Set adoRS = Nothing
+   Set adoConn = Nothing
+   
+    With Sheets("Query")
+        cmbDB = .Cells(8, 1)
+        cmbTable = .Cells(11, 1)
+        txtstrSQL = .Cells(1, 1)
+    End With
+   
+Else
+
+        WBname = ThisWorkbook.FullName
+        Set collection = GetSheetsNames(WBname)
+
+        For i = 1 To collection.Count
+           Sheets("List").Cells(i + 1, 3) = collection(i)
+        Next i
+
+    With Sheets("Query")
+        cmbDB = ThisWorkbook.FullName
+        cmbTable = .Cells(11, 1)
+        txtstrSQL = .Cells(1, 1)
+    End With
+
+End If
+    
+End Sub
+Private Sub cmbDB_Change()
+
+    Dim i As Long
+    Dim lastrow_tbl As Long
+    Dim strConn As String
+    Dim adoConn As ADODB.Connection
+    Dim adoRS As ADODB.Recordset
+    Dim WBname As String
+    Dim tblCollection As New collection
+    
+    lastrow_tbl = Sheets("List").Cells(Rows.Count, 3).End(3).Row
+    
+    With Sheets("List")
+        .Range(.Cells(2, 3), .Cells(lastrow_tbl, 3)).ClearContents
+    End With
+    
+    
+If Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xls" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsx" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsm" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsb" Then
+           
+        WBname = cmbDB
+        Set tblCollection = GetSheetsNames(WBname)
+
+        For i = 1 To tblCollection.Count
+           Sheets("List").Cells(i + 1, 3) = tblCollection(i)
+        Next i
+        
+Else
+
+       Set adoConn = New ADODB.Connection
+
+   ' Open the connection.
+   With adoConn
+      .Provider = "Microsoft.ACE.OLEDB.12.0"
+      .Open cmbDB
+   End With
+
+   ' Open the tables schema rowset.
+   Set adoRS = adoConn.OpenSchema(adSchemaTables)
+
+   ' Loop through the results and print the
+   ' names and types in the Immediate pane.
+   
+   i = 2
+   With adoRS
+      Do While Not .EOF
+      lastrow_tbl = Sheets("List").Cells(Rows.Count, 3).End(3).Row
+         If .Fields("TABLE_TYPE") <> "VIEW" And Left(.Fields("TABLE_NAME"), 4) <> "MSys" Then
+               Sheets("List").Cells(lastrow_tbl + 1, 3) = .Fields("TABLE_NAME") '& vbTab & .Fields("TABLE_TYPE")
          End If
          .MoveNext
       Loop
@@ -59,13 +189,19 @@ Private Sub cmbDB_Change()
    Set adoRS = Nothing
    Set adoConn = Nothing
    
-   lastrow_tbl = Sheets("List").Cells(rows.Count, 2).End(3).row
+End If
+
+        lastrow_tbl = Sheets("List").Cells(Rows.Count, 3).End(3).Row
         With Sheets("List")
                 cmbTable.Clear
                     For i = 2 To lastrow_tbl
-                            cmbTable.AddItem .Cells(i, 2)
+                        cmbTable.AddItem .Cells(i, 3)
                     Next i
         End With
+        
+    With Sheets("Query")
+        .Cells(8, 1) = cmbDB
+    End With
             
 End Sub
 Private Sub cmbTable_Change()
@@ -76,33 +212,163 @@ Private Sub cmbTable_Change()
   Dim strSQL As String
   Dim i As Long, lastrow_col As Long
   
-      lastrow_col = Sheets("List").Cells(rows.Count, 3).End(3).row
+  Dim objConn As ADODB.Connection
+  Dim objCat As ADOX.Catalog
+  Dim tbl As ADOX.Table
+  Dim tblCollection As New collection
+  
+      lastrow_col = Sheets("List").Cells(Rows.Count, 4).End(3).Row
     
     With Sheets("List")
-        .Range(.Cells(2, 3), .Cells(lastrow_col, 3)).ClearContents
+        .Range(.Cells(2, 4), .Cells(lastrow_col, 4)).ClearContents
     End With
 
         Set adoConn = New ADODB.Connection
         Set adoRS = New ADODB.Recordset
              
-        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
-                 "DATA SOURCE=" & _
-                 "C:\myDB\" & _
-                 cmbDB & ".accdb"
+             
+If Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xls" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsx" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsm" Or _
+   Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "xlsb" Then
+  
+        strConn = "Provider=                      Microsoft.ACE.OLEDB.12.0;" & _
+                     "Data Source=                " & cmbDB & ";" & _
+                     "Extended Properties=   Excel 12.0;"
                             
         adoConn.Open strConn
         
-     strSQL = "SELECT top 1 * FROM " & cmbTable
-     If adoConn.State = adStateOpen Then
+     strSQL = "SELECT top 1 * FROM [Excel 12.0;HDR=YES;DATABASE=" & cmbDB & "]." & cmbTable
+     If adoConn.State = adStateOpen And cmbTable <> "" Then
             adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
             If Not adoRS.EOF Then
                  With Sheets("List")
                         For i = 0 To adoRS.Fields.Count - 1
-                           .Cells(i + 2, 3).value = adoRS.Fields(i).Name
+                           .Cells(i + 2, 4).Value = adoRS.Fields(i).Name
                         Next i
                 End With
             Else
-                MsgBox "자료가 없습니다", 64, "데이터 오류"
+                MsgBox "No data", 64, "Error"
+            End If
+    adoRS.Close
+    Else
+    End If
+    adoConn.Close
+    
+    Set adoConn = Nothing
+    Set adoRS = Nothing
+                             
+  ElseIf Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "accdb" Or _
+          Mid(cmbDB, InStrRev(cmbDB, ".") + 1, Len(cmbDB) - InStrRev(cmbDB, ".")) = "mdb" Then
+         
+        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
+                         "DATA SOURCE=" & cmbDB
+                            
+        adoConn.Open strConn
+        
+     strSQL = "SELECT top 1 * FROM " & cmbTable
+     If adoConn.State = adStateOpen And cmbTable <> "" Then
+            adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
+            If Not adoRS.EOF Then
+                 With Sheets("List")
+                        For i = 0 To adoRS.Fields.Count - 1
+                           .Cells(i + 2, 4).Value = adoRS.Fields(i).Name
+                        Next i
+                End With
+            Else
+                MsgBox "No data", 64, "Error"
+            End If
+    adoRS.Close
+    Else
+    End If
+    adoConn.Close
+    
+    Set adoConn = Nothing
+    Set adoRS = Nothing
+    
+    Else
+    
+    MsgBox "Unsupported file format"
+    
+ End If
+
+    lastrow_col = Sheets("List").Cells(Rows.Count, 4).End(3).Row
+        With Sheets("List")
+            lbxCol.Clear
+                For i = 2 To lastrow_col
+                        lbxCol.AddItem .Cells(i, 4)
+                Next i
+        End With
+        
+    With Sheets("Query")
+        .Cells(11, 1) = cmbTable
+    End With
+             
+End Sub
+
+Private Sub cmdInsert_Click()
+
+    Dim adoConn As ADODB.Connection
+    Dim adoRS As ADODB.Recordset
+    Dim strConn As String
+    Dim strSQL As String
+    Dim i As Long
+    
+   
+   Cells(1, 1) = txtstrSQL
+   strSQL = txtstrSQL
+   
+
+   If InStr(1, txtstrSQL, "INTO") <> 0 Or InStr(1, txtstrSQL, "INSERT") <> 0 Or InStr(1, txtstrSQL, "DELETE") <> 0 Or InStr(1, txtstrSQL, "DROP") <> 0 Then
+   
+           Set adoConn = New ADODB.Connection
+           Set adoRS = New ADODB.Recordset
+        
+            strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
+                 "DATA SOURCE=" & cmbDB
+
+                            
+        adoConn.Open strConn
+
+        adoConn.Execute (txtstrSQL)
+        
+        adoRS.Close
+        adoConn.Close
+        Set adoConn = Nothing
+        Set adoRS = Nothing
+        MsgBox "        Done"
+        Exit Sub
+   Else
+   End If
+   
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+   Cells(1, 1) = txtstrSQL
+   strSQL = txtstrSQL
+   
+If InStr(1, txtstrSQL, "$") = 0 Then
+       
+        Set adoConn = New ADODB.Connection
+        Set adoRS = New ADODB.Recordset
+             
+            strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
+                 "DATA SOURCE=" & cmbDB
+                            
+        adoConn.Open strConn
+        
+     If adoConn.State = adStateOpen Then
+            adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
+            If Not adoRS.EOF Then
+                 With Sheets("Query")
+                    .Range("a20").CurrentRegion.ClearContents
+                        For i = 0 To adoRS.Fields.Count - 1
+                           .Cells(20, i + 1).Value = adoRS.Fields(i).Name
+                        Next i
+                    .Range("a21").CopyFromRecordset adoRS
+                    .Range("B:ZZ").Columns.AutoFit
+                    .Activate
+                End With
+            Else
+                MsgBox "No data", 64, "Error"
             End If
     adoRS.Close
     Else
@@ -112,16 +378,140 @@ Private Sub cmbTable_Change()
     Set adoConn = Nothing
     Set adoRS = Nothing
 
-    lastrow_col = Sheets("List").Cells(rows.Count, 3).End(3).row
-        With Sheets("List")
-            lbxCol.Clear
-                    For i = 2 To lastrow_col
-                            lbxCol.AddItem .Cells(i, 3)
-                    Next i
-        End With
-             
+        
+Else
+      
+        Set adoRS = New ADODB.Recordset
+        strConn = "Provider=                      Microsoft.ACE.OLEDB.12.0;" & _
+                     "Data Source=                " & cmbDB & ";" & _
+                     "Extended Properties=   Excel 12.0;"
+                     
+        adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
+            If Not adoRS.EOF Then
+                 With Sheets("Query")
+                    .Range("a20").CurrentRegion.ClearContents
+                        For i = 0 To adoRS.Fields.Count - 1
+                           .Cells(20, i + 1).Value = adoRS.Fields(i).Name
+                        Next i
+                    .Range("a21").CopyFromRecordset adoRS
+                    .Range("B:ZZ").Columns.AutoFit
+                    .Activate
+                End With
+            Else
+                MsgBox "No data", 64, "Error"
+            End If
+    adoRS.Close
+    Set adoRS = Nothing
+    
+End If
+
+Cells(21, 1).Select
 End Sub
 
+Private Sub cmdInsert2_Click()
+
+    Dim adoConn As ADODB.Connection
+    Dim adoRS As ADODB.Recordset
+    Dim strConn As String
+    Dim strSQL As String
+    Dim i As Long
+    
+   
+   Cells(1, 1) = txtstrSQLCollection
+   txtstrSQL = txtstrSQLCollection
+   strSQL = txtstrSQL
+   
+
+   If InStr(1, txtstrSQL, "INTO") <> 0 Or InStr(1, txtstrSQL, "INSERT") <> 0 Or InStr(1, txtstrSQL, "DELETE") <> 0 Or InStr(1, txtstrSQL, "DROP") <> 0 Then
+   
+           Set adoConn = New ADODB.Connection
+           Set adoRS = New ADODB.Recordset
+        
+            strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
+                 "DATA SOURCE=" & cmbDB
+                            
+                            
+        adoConn.Open strConn
+
+        adoConn.Execute (txtstrSQL)
+        
+        adoRS.Close
+        adoConn.Close
+        Set adoConn = Nothing
+        Set adoRS = Nothing
+        MsgBox "        Done"
+        Exit Sub
+   Else
+   End If
+   
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+   Cells(1, 1) = txtstrSQLCollection
+   txtstrSQL = txtstrSQLCollection
+   strSQL = txtstrSQL
+   
+If InStr(1, txtstrSQL, "$") = 0 Then
+       
+        Set adoConn = New ADODB.Connection
+        Set adoRS = New ADODB.Recordset
+             
+            strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
+                 "DATA SOURCE=" & cmbDB
+                            
+        adoConn.Open strConn
+        
+     If adoConn.State = adStateOpen Then
+            adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
+            If Not adoRS.EOF Then
+                 With Sheets("Query")
+                    .Range("a20").CurrentRegion.ClearContents
+                        For i = 0 To adoRS.Fields.Count - 1
+                           .Cells(20, i + 1).Value = adoRS.Fields(i).Name
+                        Next i
+                    .Range("a21").CopyFromRecordset adoRS
+                    .Range("B:ZZ").Columns.AutoFit
+                    .Activate
+                End With
+            Else
+                MsgBox "No data", 64, "Error"
+            End If
+    adoRS.Close
+    Else
+    End If
+    adoConn.Close
+    
+    Set adoConn = Nothing
+    Set adoRS = Nothing
+
+        
+Else
+      
+        Set adoRS = New ADODB.Recordset
+        strConn = "Provider=                      Microsoft.ACE.OLEDB.12.0;" & _
+                     "Data Source=                " & cmbDB & ";" & _
+                     "Extended Properties=   Excel 12.0;"
+                     
+        adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
+            If Not adoRS.EOF Then
+                 With Sheets("Query")
+                    .Range("a20").CurrentRegion.ClearContents
+                        For i = 0 To adoRS.Fields.Count - 1
+                           .Cells(20, i + 1).Value = adoRS.Fields(i).Name
+                        Next i
+                    .Range("a21").CopyFromRecordset adoRS
+                    .Range("B:ZZ").Columns.AutoFit
+                    .Activate
+                End With
+            Else
+                MsgBox "No data", 64, "Error"
+            End If
+    adoRS.Close
+    Set adoRS = Nothing
+    
+End If
+
+Cells(21, 1).Select
+
+End Sub
 
 Private Sub cmdDesc_Click()
     txtstrSQL.SelText = "DESC "
@@ -131,16 +521,15 @@ End Sub
 Private Sub cmdDrop_Click()
     txtstrSQL.SelText = "DROP TABLE "
     txtstrSQL.SetFocus
-    Sheets("Query").Cells(13, 1).ClearContents
 End Sub
 
 Private Sub cmdHaving_Click()
-    txtstrSQL.SelText = "HAVING "
+    txtstrSQL.SelText = "Having "
     txtstrSQL.SetFocus
 End Sub
 
 Private Sub cmdInto_Click()
-    txtstrSQL.SelText = "SELECT * INTO " & vbCr & "FROM [Excel 8.0;HDR=YES;DATABASE=C:\Users\JOO\Desktop\Analysis.xlsb].[DB$]" & vbCr & "WHERE 일자 >= 0"
+    txtstrSQL.SelText = "SELECT * INTO " & vbCrLf & "FROM [Excel 12.0;HDR=YES;DATABASE=" & ThisWorkbook.FullName & "].[DB$]"
     txtstrSQL.SetFocus
 End Sub
 
@@ -154,7 +543,7 @@ Private Sub cmdOn_Click()
 End Sub
 
 Private Sub cmdOrder_Click()
-    txtstrSQL.SelText = "ORDER BY "
+    txtstrSQL.SelText = "ORDER BY"
     txtstrSQL.SetFocus
 End Sub
 
@@ -169,12 +558,12 @@ Private Sub cmdA_Click()
 End Sub
 
 Private Sub cmdAnd_Click()
-    txtstrSQL.SelText = "and "
+    txtstrSQL.SelText = "AND "
     txtstrSQL.SetFocus
 End Sub
 
 Private Sub cmdAs_Click()
-    txtstrSQL.SelText = "as "
+    txtstrSQL.SelText = "AS "
     txtstrSQL.SetFocus
 End Sub
 
@@ -199,7 +588,7 @@ Private Sub cmdComma_Click()
 End Sub
 
 Private Sub cmdCount_Click()
-         txtstrSQL.SelText = "Count"
+         txtstrSQL.SelText = "COUNT"
          txtstrSQL.SetFocus
 End Sub
 
@@ -229,7 +618,7 @@ Private Sub cmdL_Click()
 End Sub
 
 Private Sub cmdOr_Click()
-     txtstrSQL.SelText = "or "
+     txtstrSQL.SelText = "OR "
      txtstrSQL.SetFocus
 End Sub
 
@@ -254,7 +643,7 @@ Private Sub cmdSub_Click()
     Dim k As Long
     Dim lastrow As Long
     
-            lastrow = Sheets("strSQL").Cells(rows.Count, 3).row
+            lastrow = Sheets("strSQL").Cells(Rows.Count, 3).Row
     
         With Sheets("strSQL")
             .Range(.Cells(2, 3), .Cells(lastrow, 3)).Replace What:=txtOld, Replacement:=txtNew, LookAt:=xlPart, _
@@ -265,18 +654,26 @@ Private Sub cmdSub_Click()
 End Sub
 
 Private Sub cmdSum_Click()
-    txtstrSQL.SelText = "Sum"
+    txtstrSQL.SelText = "SUM"
     txtstrSQL.SetFocus
 End Sub
 
 Private Sub cmdTable_Click()
+If Left(cmbTable, 1) <> "[" Then
     txtstrSQL.SelText = cmbTable
     txtstrSQL.SetFocus
+ElseIf cmbDB <> ThisWorkbook.FullName Then
+   txtstrSQL.SelText = "[Excel 12.0;HDR=YES;DATABASE=" & cmbDB & "]." & cmbTable
+   txtstrSQL.SetFocus
+Else
+   txtstrSQL.SelText = cmbTable
+   txtstrSQL.SetFocus
+End If
 End Sub
 
 Private Sub cmdTop_Click()
-     txtstrSQL.SelText = "SELECT Top 20 * " & vbCr & "FROM  "
-     txtstrSQL.SetFocus
+    txtstrSQL.SelText = "SELECT TOP 20 * " & vbCrLf & "FROM "
+    txtstrSQL.SetFocus
 End Sub
 
 Private Sub cmdWhere_Click()
@@ -294,14 +691,12 @@ Private Sub cmd왼괄호_Click()
      txtstrSQL.SetFocus
 End Sub
 
-
-
 Private Sub lbxCol_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-    Dim i As Long
+        Dim i As Long
     Dim c As Range
     Dim lastrow_col  As Long
     
-        lastrow_col = Sheets("List").Cells(rows.Count, 3).End(3).row
+        lastrow_col = Sheets("List").Cells(Rows.Count, 3).End(3).Row
     
     For i = 0 To lbxCol.ListCount - 1
         If lbxCol.Selected(i) = True Then
@@ -312,87 +707,13 @@ Private Sub lbxCol_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
 
 End Sub
 
-Private Sub MultiPage1_Change()
-
-End Sub
-
-Private Sub txtstrSQL_Change()
-
-End Sub
-
-Private Sub UserForm_Initialize()
-
-    Dim i As Long
-    Dim lastrow_strSQL As Long
-    Dim lastrow_DBList As Long
-    Dim adoConn As ADODB.Connection
-    Dim adoRS As ADODB.Recordset
-    
-        lastrow_strSQL = Sheets("strSQL").Cells(rows.Count, 2).End(3).row
-        lastrow_DBList = Sheets("List").Cells(rows.Count, 1).End(3).row
-
-    
-    For i = 2 To lastrow_strSQL
-        With Sheets("strSQL")
-            listboxstrSQLCollection.AddItem .Cells(i, 2)
-        End With
-    Next i
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-        With Sheets("List")
-                    For i = 2 To lastrow_DBList
-                            cmbDB.AddItem .Cells(i, 1)
-                    Next i
-        End With
-        
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-   Set adoConn = New ADODB.Connection
-
-   ' Open the connection.
-   With adoConn
-      .Provider = "Microsoft.ACE.OLEDB.12.0"
-      .Open "C:\myDB\DB.accdb"
-   End With
-
-   ' Open the tables schema rowset.
-   Set adoRS = adoConn.OpenSchema(adSchemaTables)
-
-   ' Loop through the results and print the
-   ' names and types in the Immediate pane.
-   
-   i = 2
-   With adoRS
-      Do While Not .EOF
-         If .Fields("TABLE_TYPE") <> "VIEW" And Left(.Fields("TABLE_NAME"), 4) <> "MSys" Then
-               Sheets("List").Cells(i, 2) = .Fields("TABLE_NAME") '& vbTab & .Fields("TABLE_TYPE")
-         End If
-         .MoveNext
-         i = i + 1
-      Loop
-   End With
-   adoRS.Close
-   adoConn.Close
-   
-   
-   Set adoRS = Nothing
-   Set adoConn = Nothing
-    
-   With Sheets("Query")
-        cmbDB = .Cells(10, 1)
-        cmbTable = .Cells(13, 1)
-        txtstrSQL = .Cells(1, 1)
-    End With
-                
-End Sub
 Private Sub listboxstrSQLCollection_Change()
 
     Dim i As Long
     Dim c As Range
     Dim lastrow As Long
     
-        lastrow = Sheets("strSQL").Cells(rows.Count, 2).End(3).row
+        lastrow = Sheets("strSQL").Cells(Rows.Count, 2).End(3).Row
     
     For i = 0 To listboxstrSQLCollection.ListCount - 1
         If listboxstrSQLCollection.Selected(i) = True Then
@@ -415,213 +736,4 @@ End Sub
 Private Sub cmdExit2_Click()
     Unload Me
 End Sub
-Private Sub cmdInsert_Click()
 
-    Dim adoConn As ADODB.Connection
-    Dim adoRS As ADODB.Recordset
-    Dim strConn As String
-    Dim strSQL As String
-    Dim i As Long
-    
-   
-   Cells(1, 1) = txtstrSQL
-   strSQL = txtstrSQL
-   
-   
-   If InStr(1, txtstrSQL, "INTO") <> 0 Or InStr(1, txtstrSQL, "INSERT") <> 0 Or InStr(1, txtstrSQL, "DELETE") <> 0 Or InStr(1, txtstrSQL, "DROP") <> 0 Then
-   
-           Set adoConn = New ADODB.Connection
-           Set adoRS = New ADODB.Recordset
-        
-        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
-                 "DATA SOURCE=" & _
-                 "C:\myDB\" & _
-                 cmbDB & ".accdb"
-                            
-        adoConn.Open strConn
-
-        adoConn.Execute (txtstrSQL)
-        
-        adoRS.Close
-        adoConn.Close
-        Set adoConn = Nothing
-        Set adoRS = Nothing
-        MsgBox "        처리되었습니다."
-        Exit Sub
-   Else
-   End If
-   
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-   Cells(1, 1) = txtstrSQL
-   strSQL = txtstrSQL
-   
-If InStr(1, txtstrSQL, "$") = 0 Then
-       
-        Set adoConn = New ADODB.Connection
-        Set adoRS = New ADODB.Recordset
-             
-        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
-                 "DATA SOURCE=" & _
-                 "C:\myDB\" & _
-                 cmbDB & ".accdb"
-                            
-        adoConn.Open strConn
-        
-     If adoConn.State = adStateOpen Then
-            adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
-            If Not adoRS.EOF Then
-                 With Sheets("Query")
-                    .Range("a30").CurrentRegion.ClearContents
-                        For i = 0 To adoRS.Fields.Count - 1
-                           .Cells(30, i + 1).value = adoRS.Fields(i).Name
-                        Next i
-                    .Range("a31").CopyFromRecordset adoRS
-                    .Range("B:ZZ").Columns.AutoFit
-                    .Activate
-                End With
-            Else
-                MsgBox "자료가 없습니다", 64, "데이터 오류"
-            End If
-    adoRS.Close
-    Else
-    End If
-    adoConn.Close
-    
-    Set adoConn = Nothing
-    Set adoRS = Nothing
-
-        
-Else
-      
-        Set adoRS = New ADODB.Recordset
-        strConn = "Provider=                      Microsoft.ACE.OLEDB.12.0;" & _
-                     "Data Source=                " & ThisWorkbook.FullName & ";" & _
-                     "Extended Properties=   Excel 12.0;"
-                     
-        adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
-            If Not adoRS.EOF Then
-                 With Sheets("Query")
-                    .Range("a30").CurrentRegion.ClearContents
-                        For i = 0 To adoRS.Fields.Count - 1
-                           .Cells(30, i + 1).value = adoRS.Fields(i).Name
-                        Next i
-                    .Range("a31").CopyFromRecordset adoRS
-                    .Range("B:ZZ").Columns.AutoFit
-                    .Activate
-                End With
-            Else
-                MsgBox "자료가 없습니다", 64, "데이터 오류"
-            End If
-    adoRS.Close
-    Set adoRS = Nothing
-    
-End If
-
-Cells(31, 1).Select
-End Sub
-
-Private Sub cmdInsert2_Click()
-
-    Dim adoConn As ADODB.Connection
-    Dim adoRS As ADODB.Recordset
-    Dim strConn As String
-    Dim strSQL As String
-    Dim i As Long
-    
-   
-   Cells(1, 1) = txtstrSQLCollection
-   txtstrSQL = txtstrSQLCollection
-   strSQL = txtstrSQL
-   
-   If InStr(1, txtstrSQL, "INTO") <> 0 Or InStr(1, txtstrSQL, "INSERT") <> 0 Or InStr(1, txtstrSQL, "DELETE") <> 0 Or InStr(1, txtstrSQL, "DROP") <> 0 Then
-   
-           Set adoConn = New ADODB.Connection
-           Set adoRS = New ADODB.Recordset
-        
-        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
-                 "DATA SOURCE=" & _
-                 "C:\myDB\" & _
-                 cmbDB & ".accdb"
-                            
-        adoConn.Open strConn
-
-        adoConn.Execute (txtstrSQL)
-        
-        adoRS.Close
-        adoConn.Close
-        Set adoConn = Nothing
-        Set adoRS = Nothing
-        MsgBox "        처리되었습니다."
-        Exit Sub
-   Else
-   End If
-   
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-   Cells(1, 1) = txtstrSQLCollection
-   txtstrSQL = txtstrSQLCollection
-   strSQL = txtstrSQL
-   
-If InStr(1, txtstrSQL, "$") = 0 Then
-       
-        Set adoConn = New ADODB.Connection
-        Set adoRS = New ADODB.Recordset
-             
-        strConn = "PROVIDER=Microsoft.ACE.OLEDB.12.0; " & _
-                 "DATA SOURCE=" & _
-                 "C:\myDB\" & _
-                 cmbDB & ".accdb"
-                            
-        adoConn.Open strConn
-        
-     If adoConn.State = adStateOpen Then
-            adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
-            If Not adoRS.EOF Then
-                 With Sheets("Query")
-                    .Range("a30").CurrentRegion.ClearContents
-                        For i = 0 To adoRS.Fields.Count - 1
-                           .Cells(30, i + 1).value = adoRS.Fields(i).Name
-                        Next i
-                    .Range("a31").CopyFromRecordset adoRS
-                    .Range("B:ZZ").Columns.AutoFit
-                    .Activate
-                End With
-            Else
-                MsgBox "자료가 없습니다", 64, "데이터 오류"
-            End If
-    adoRS.Close
-    Else
-    End If
-    adoConn.Close
-    
-    Set adoConn = Nothing
-    Set adoRS = Nothing
-
-        
-Else
-      
-        Set adoRS = New ADODB.Recordset
-        strConn = "Provider=                      Microsoft.ACE.OLEDB.12.0;" & _
-                     "Data Source=                " & ThisWorkbook.FullName & ";" & _
-                     "Extended Properties=   Excel 12.0;"
-                     
-        adoRS.Open strSQL, strConn, adOpenForwardOnly, adLockReadOnly, adCmdText
-            If Not adoRS.EOF Then
-                 With Sheets("Query")
-                    .Range("a30").CurrentRegion.ClearContents
-                        For i = 0 To adoRS.Fields.Count - 1
-                           .Cells(30, i + 1).value = adoRS.Fields(i).Name
-                        Next i
-                    .Range("a31").CopyFromRecordset adoRS
-                    .Range("B:ZZ").Columns.AutoFit
-                    .Activate
-                End With
-            Else
-                MsgBox "자료가 없습니다", 64, "데이터 오류"
-            End If
-    adoRS.Close
-    Set adoRS = Nothing
-    
-End If
-
-Cells(31, 1).Select
-End Sub
